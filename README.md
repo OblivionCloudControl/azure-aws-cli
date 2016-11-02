@@ -1,6 +1,6 @@
 # Get temporary AWS credentials from Azure Active Directory
 
-## Prerequisits
+## Prerequisites
 * Have AAD configured as an IdP in AWS IAM (https://azure.microsoft.com/en-us/documentation/articles/active-directory-saas-amazon-web-service/)
 * Boto3
 
