@@ -193,8 +193,7 @@ def o365_login(session, saml_app_id, username, password):
   openid_response = session.post(
       "https://account.activedirectory.windowsazure.com/", data=openid_payload)
   
-  redir_response = session.get("https://account.activedirectory.windowsazure.com/applications/redirecttofederatedapplication.aspx?Operation=LinkedSignIn&applicationLinkName=AWS+-+OblCC+IAM&applicationId=c48a42b758704a90b10e7095ffdaffd4")
-  
+  redir_response = session.get("https://account.activedirectory.windowsazure.com/applications/redirecttofederatedapplication.aspx?Operation=LinkedSignIn&applicationLinkName=AWS&applicationId=" + saml_app_id)
   
   redir_soup = BeautifulSoup(redir_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
   redir_match = re.match(r".*?window\.location\s*=\s*\'([^']+)\'", str(redir_soup), re.M|re.S)
