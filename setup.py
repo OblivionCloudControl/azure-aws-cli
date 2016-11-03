@@ -13,13 +13,13 @@ except ImportError:
     sys.exit(1)
 
 setup(name='azure-aws-login',
-      version='0.0.1',
+      version='0.0.2',
       description='Retrieve temporary access credentials using Azure AD login',
       author='Andres Koetsier',
       author_email='andres@oblcc.com',
       url='http://oblcc.com/',
       license='GPLv3',
-      install_requires=['boto3'],
+      install_requires=['boto3', 'requests'],
       scripts=[
          'bin/aad_aws_login'
       ],
