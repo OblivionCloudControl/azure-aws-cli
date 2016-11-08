@@ -19,7 +19,7 @@ setup(name='azure-aws-login',
       author_email='andres@oblcc.com',
       url='http://oblcc.com/',
       license='GPLv3',
-      install_requires=['boto3', 'requests'],
+      install_requires=['boto3', 'requests', 'bs4'],
       scripts=[
          'bin/aad_aws_login'
       ],
