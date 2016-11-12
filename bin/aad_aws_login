@@ -20,340 +20,360 @@ from urlparse import urlparse, urlunparse
 # Variables
 
 # Uncomment to enable low level debugging
-#logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.CRITICAL)
 logger = logging.getLogger('saml-form-auth')
 
 
 def main():
-  parser = argparse.ArgumentParser(description='Get temporary AWS access credentials using O365 SAML Login')
-  parser.add_argument('username', type=str,
-                    help='the o365 username')
-  parser.add_argument('saml_app_id', type=str,
-                    help='the o365 SAML app id')
-  parser.add_argument('--profile-name', dest='profile_name',
-                    help='the name of AWS profile to save the data in (default username)')
+    parser = argparse.ArgumentParser(description='Get temporary AWS access credentials using O365 SAML Login')
+    parser.add_argument('username', type=str,
+                        help='the o365 username')
+    parser.add_argument('saml_app_id', type=str,
+                        help='the o365 SAML app id')
+    parser.add_argument('--profile-name', dest='profile_name',
+                        help='the name of AWS profile to save the data in (default username)')
 
-  args = parser.parse_args()
- 
-  if args.username is not None:
-    username = args.username
-  else:
-    print "Username:",
-    username = raw_input()
-    
-  saml_app_id = args.saml_app_id
+    args = parser.parse_args()
 
-  if args.profile_name is not None:
-    profile_name = args.profile_name
-  else:
-    profile_name = username
+    if args.username is not None:
+        username = args.username
+    else:
+        print "Username:",
+        username = raw_input()
 
-  password = getpass.getpass()
- 
-  # Initiate session handler
-  session = requests.Session()
-  saml_response = o365_login(session, saml_app_id, username, password)
+    saml_app_id = args.saml_app_id
 
-  saml_assertion = extract_saml_assertion(saml_response)
+    if args.profile_name is not None:
+        profile_name = args.profile_name
+    else:
+        profile_name = username
 
-  awsroles = get_roles_from_saml_assertion(saml_assertion)
-  # Debug only
-  # print(base64.b64decode(assertion))
-  
+    password = getpass.getpass()
 
-  # If I have more than one role, ask the user which one they want,
-  # otherwise just proceed
-  print ""
-  if len(awsroles) > 1:
-      i = 0
-      print "Please choose the role you would like to assume:"
-      for awsrole in awsroles:
-          print '[', i, ']: ', awsrole.split(',')[0]
-          i += 1
-      print "Selection: ",
-      selectedroleindex = raw_input()
-  
-      # Basic sanity check of input
-      if int(selectedroleindex) > (len(awsroles) - 1):
-          print 'You selected an invalid role index, please try again'
-          sys.exit(0)
-  
-      role_arn = awsroles[int(selectedroleindex)].split(',')[0]
-      principal_arn = awsroles[int(selectedroleindex)].split(',')[1]
-  else:
-      role_arn = awsroles[0].split(',')[0]
-      principal_arn = awsroles[0].split(',')[1]
+    # Initiate session handler
+    session = requests.Session()
+    saml_response = o365_login(session, saml_app_id, username, password)
 
-  credentials = assume_role_with_saml(role_arn, principal_arn, saml_assertion)  
+    saml_assertion = extract_saml_assertion(saml_response)
 
-  save_aws_credentials(profile_name=profile_name,
-                       access_key_id=credentials['AccessKeyId'], 
-                       secret_access_key=credentials['SecretAccessKey'], 
-                       session_token=credentials['SessionToken'])
+    awsroles = get_roles_from_saml_assertion(saml_assertion)
+    # Debug only
+    # print(base64.b64decode(assertion))
 
-  # Give the user some basic info as to what has just happened
-  print '\n----------------------------------------------------------------'
-  print 'Your new access key pair has been stored in the AWS configuration file under the {0} profile.'.format(profile_name)
-  print 'Note that it will expire at {0}.'.format(credentials['Expiration'])
-  print 'After this time, you may safely rerun this script to refresh your access key pair.'
-  print 'To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile {0} ec2 describe-instances).'.format(profile_name)
-  print '----------------------------------------------------------------\n\n'
+
+    # If I have more than one role, ask the user which one they want,
+    # otherwise just proceed
+    print ""
+    if len(awsroles) > 1:
+        i = 0
+        print "Please choose the role you would like to assume:"
+        for awsrole in awsroles:
+            print '[', i, ']: ', awsrole.split(',')[0]
+            i += 1
+        print "Selection: ",
+        selectedroleindex = raw_input()
+
+        # Basic sanity check of input
+        if int(selectedroleindex) > (len(awsroles) - 1):
+            print 'You selected an invalid role index, please try again'
+            sys.exit(0)
+
+        role_arn = awsroles[int(selectedroleindex)].split(',')[0]
+        principal_arn = awsroles[int(selectedroleindex)].split(',')[1]
+    else:
+        role_arn = awsroles[0].split(',')[0]
+        principal_arn = awsroles[0].split(',')[1]
+
+    credentials = assume_role_with_saml(role_arn, principal_arn, saml_assertion)
+
+    save_aws_credentials(profile_name=profile_name,
+                         access_key_id=credentials['AccessKeyId'],
+                         secret_access_key=credentials['SecretAccessKey'],
+                         session_token=credentials['SessionToken'])
+
+    # Give the user some basic info as to what has just happened
+    print '\n----------------------------------------------------------------'
+    print 'Your new access key pair has been stored in the AWS configuration file under the {0} profile.'.format(
+        profile_name)
+    print 'Note that it will expire at {0}.'.format(credentials['Expiration'])
+    print 'After this time, you may safely rerun this script to refresh your access key pair.'
+    print 'To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile {0} ec2 describe-instances).'.format(
+        profile_name)
+    print '----------------------------------------------------------------\n\n'
+
 
 def save_aws_credentials(profile_name, access_key_id, secret_access_key, session_token):
-  # Write the AWS STS token into the AWS credential file
-  home = expanduser("~")
-  filename = home + '/.aws/credentials'
-  
-  # Read in the existing config file
-  config = ConfigParser.RawConfigParser()
-  config.read(filename)
-  
-  # Put the credentials into a saml specific section instead of clobbering
-  # the default credentials
-  if not config.has_section(profile_name):
-      config.add_section(profile_name)
-  
-  config.set(profile_name, 'output', 'json')
-  config.set(profile_name, 'region', 'eu-west-1')
-  config.set(profile_name, 'aws_access_key_id', access_key_id)
-  config.set(profile_name, 'aws_secret_access_key', secret_access_key)
-  config.set(profile_name, 'aws_session_token', session_token)
-  
-  # Write the updated config file
-  with open(filename, 'w+') as configfile:
-      config.write(configfile)
- 
+    # Write the AWS STS token into the AWS credential file
+    home = expanduser("~")
+    filename = home + '/.aws/credentials'
+
+    # Read in the existing config file
+    config = ConfigParser.RawConfigParser()
+    config.read(filename)
+
+    # Put the credentials into a saml specific section instead of clobbering
+    # the default credentials
+    if not config.has_section(profile_name):
+        config.add_section(profile_name)
+
+    config.set(profile_name, 'output', 'json')
+    config.set(profile_name, 'region', 'eu-west-1')
+    config.set(profile_name, 'aws_access_key_id', access_key_id)
+    config.set(profile_name, 'aws_secret_access_key', secret_access_key)
+    config.set(profile_name, 'aws_session_token', session_token)
+
+    # Write the updated config file
+    with open(filename, 'w+') as configfile:
+        config.write(configfile)
+
+
 def idp_entry_url(saml_app_id):
-  return 'https://myapps.microsoft.com/signin/AWS/' + saml_app_id
-  
+    return 'https://myapps.microsoft.com/signin/AWS/' + saml_app_id
+
+
 def o365_login(session, saml_app_id, username, password):
-  """
-  Get the login form and perform a login
-  """
-  login_form = session.get(idp_entry_url(saml_app_id))
-  
-  # Parse the response and extract all the necessary values
-  # in order to build a dictionary of all of the form values the IdP expects
-  login_form_soup = BeautifulSoup(login_form.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
-  
-  payload = {}
-  
-  for inputtag in login_form_soup.find_all(re.compile('(INPUT|input)')):
-    name = inputtag.get('name','')
-    value = inputtag.get('value','')
-    if "login" in name.lower():
-      #Make an educated guess that this is the right field for the username
-      payload[name] = username
-    elif "email" in name.lower():
-      #Some IdPs also label the username field as 'email'
-      payload[name] = username
-    elif "passwd" in name.lower():
-      #Make an educated guess that this is the right field for the password
-      payload[name] = password
-    else:
-      #Simply populate the parameter with the existing value (picks up hidden fields in the login form)
-      payload[name] = value
+    """
+    Get the login form and perform a login
+    """
+    login_form = session.get(idp_entry_url(saml_app_id))
 
-  #
-  # Debug the parameter payload if needed
-  # Use with caution since this will print sensitive output to the screen
-  #print payload
-  
-  for inputtag in login_form_soup.find_all(re.compile('(FORM|form)')):
-    action = inputtag.get('action')
-    if action:
-      login_form_submit_url = "https://login.microsoftonline.com" + action
-  
-  # Performs the submission of the IdP login form with the above post data
-  #print("posting to " + str(idpauthformsubmiturl) + "\n\n" + str(payload))
-  #exit(0)
-  login_response = session.post(login_form_submit_url, data=payload)
-  
-  # Debug the response if needed
-  #print (response.text)
+    # Parse the response and extract all the necessary values
+    # in order to build a dictionary of all of the form values the IdP expects
+    login_form_soup = BeautifulSoup(login_form.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
 
-  # Get the response and follow openid form
-  login_response_soup = BeautifulSoup(login_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
-  mfa_flow_match = re.match(r".*?FlowToken:", str(login_response_soup), re.M|re.S)
-  
-  if mfa_flow_match is not None:
-    mfa_response = start_mfa_flow(session, login_response_soup, payload["canary"])
-    login_response_soup = BeautifulSoup(mfa_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
+    payload = {}
 
-  openid_payload = {}
-  #for inputtag in openidsoup.find_all(re.compile('(INPUT|input)')):
-  for inputtag in login_response_soup.find_all(re.compile('(INPUT|input)')):
-    name = inputtag.get('name', None)
-    if name is not None:
-      value = inputtag.get('value','')
-      openid_payload[name] = value
-  
-  #print("posting to " + "https://account.activedirectory.windowsazure.com/" + "\n\n" + str(openidpayload))
-  openid_response = session.post(
-      "https://account.activedirectory.windowsazure.com/", data=openid_payload)
-  
-  redir_response = session.get("https://account.activedirectory.windowsazure.com/applications/redirecttofederatedapplication.aspx?Operation=LinkedSignIn&applicationLinkName=AWS&applicationId=" + saml_app_id)
-  
-  redir_soup = BeautifulSoup(redir_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
-  redir_match = re.match(r".*?window\.location\s*=\s*\'([^']+)\'", str(redir_soup), re.M|re.S)
-  redir_url = redir_match.group(1)
-  saml_response = session.get(redir_url)
-  return saml_response
+    for inputtag in login_form_soup.find_all(re.compile('(INPUT|input)')):
+        name = inputtag.get('name', '')
+        value = inputtag.get('value', '')
+        if "login" in name.lower():
+            # Make an educated guess that this is the right field for the username
+            payload[name] = username
+        elif "email" in name.lower():
+            # Some IdPs also label the username field as 'email'
+            payload[name] = username
+        elif "passwd" in name.lower():
+            # Make an educated guess that this is the right field for the password
+            payload[name] = password
+        else:
+            # Simply populate the parameter with the existing value (picks up hidden fields in the login form)
+            payload[name] = value
+
+    #
+    # Debug the parameter payload if needed
+    # Use with caution since this will print sensitive output to the screen
+    # print payload
+
+    for inputtag in login_form_soup.find_all(re.compile('(FORM|form)')):
+        action = inputtag.get('action')
+        if action:
+            login_form_submit_url = "https://login.microsoftonline.com" + action
+
+    # Performs the submission of the IdP login form with the above post data
+    # print("posting to " + str(idpauthformsubmiturl) + "\n\n" + str(payload))
+    # exit(0)
+    login_response = session.post(login_form_submit_url, data=payload)
+
+    # Debug the response if needed
+    # print (response.text)
+
+    # Get the response and follow openid form
+    login_response_soup = BeautifulSoup(login_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
+    mfa_flow_match = re.match(r".*?FlowToken:", str(login_response_soup), re.M | re.S)
+
+    if mfa_flow_match is not None:
+        mfa_response = start_mfa_flow(session, login_response_soup, payload["canary"])
+        login_response_soup = BeautifulSoup(mfa_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
+
+    openid_payload = {}
+    # for inputtag in openidsoup.find_all(re.compile('(INPUT|input)')):
+    for inputtag in login_response_soup.find_all(re.compile('(INPUT|input)')):
+        name = inputtag.get('name', None)
+        if name is not None:
+            value = inputtag.get('value', '')
+            openid_payload[name] = value
+
+    # print("posting to " + "https://account.activedirectory.windowsazure.com/" + "\n\n" + str(openidpayload))
+    openid_response = session.post(
+        "https://account.activedirectory.windowsazure.com/", data=openid_payload)
+
+    redir_response = session.get(
+        "https://account.activedirectory.windowsazure.com/applications/redirecttofederatedapplication.aspx?Operation=LinkedSignIn&applicationLinkName=AWS&applicationId=" + saml_app_id)
+
+    redir_soup = BeautifulSoup(redir_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
+    redir_match = re.match(r".*?window\.location\s*=\s*\'([^']+)\'", str(redir_soup), re.M | re.S)
+    redir_url = redir_match.group(1)
+    saml_response = session.get(redir_url)
+    return saml_response
+
 
 def start_mfa_flow(session, login_response_soup, canary):
-  mfaStartMatch = re.match(r".*?SASControllerBeginAuthUrl:\s*\'([^']+)\'", str(login_response_soup), re.M|re.S)
-  mfaProcessMatch = re.match(r".*?SASControllerProcessAuthUrl:\s*\'([^']+)\'", str(login_response_soup), re.M|re.S)
-  mfaEndMatch = re.match(r".*?SASControllerEndAuthUrl:\s*\'([^']+)\'", str(login_response_soup), re.M|re.S)
-  mfaFlowMatch = re.match(r".*?FlowToken:\s*\'([^']+)\'", str(login_response_soup), re.M|re.S)
-  mfaCtxMatch = re.match(r".*?Ctx:\s*\'([^']+)\'", str(login_response_soup), re.M|re.S)
-  mfaAuthMethodId = re.match(r'.*?\"AuthMethodId\":\s*\"([^"]+)\"', str(login_response_soup), re.M|re.S)
+    mfaStartMatch = re.match(r".*?SASControllerBeginAuthUrl:\s*\'([^']+)\'", str(login_response_soup), re.M | re.S)
+    mfaProcessMatch = re.match(r".*?SASControllerProcessAuthUrl:\s*\'([^']+)\'", str(login_response_soup), re.M | re.S)
+    mfaEndMatch = re.match(r".*?SASControllerEndAuthUrl:\s*\'([^']+)\'", str(login_response_soup), re.M | re.S)
+    mfaFlowMatch = re.match(r".*?FlowToken:\s*\'([^']+)\'", str(login_response_soup), re.M | re.S)
+    mfaCtxMatch = re.match(r".*?Ctx:\s*\'([^']+)\'", str(login_response_soup), re.M | re.S)
+    mfaAuthMethodId = re.match(r'.*?\"AuthMethodId\":\s*\"([^"]+)\"', str(login_response_soup), re.M | re.S)
 
-  mfa_auth_method = mfaAuthMethodId.group(1)
-      
-  if mfa_auth_method == "PhoneAppNotification":
-    return start_phone_app_mfa(session=session,
-                        begin_auth_url=mfaStartMatch.group(1),
-                        end_auth_url=mfaEndMatch.group(1),
-                        process_auth_url=mfaProcessMatch.group(1),
-                        flow_token=mfaFlowMatch.group(1),
-                        ctx=mfaCtxMatch.group(1),
-                        canary=canary)
-  elif mfa_auth_method in ["OneWaySMS", "PhoneAppOTP"]:
-    return start_token_mfa(session=session,
-                  mfa_auth_method=mfa_auth_method,
-                  begin_auth_url=mfaStartMatch.group(1),
-                  end_auth_url=mfaEndMatch.group(1),
-                  process_auth_url=mfaProcessMatch.group(1),
-                  flow_token=mfaFlowMatch.group(1),
-                  ctx=mfaCtxMatch.group(1),
-                  canary=canary)
-  else:
-    print("Unsupported MFA method: " + mfaAuthMethodId.group(1))
-    exit(1)
+    mfa_auth_method = mfaAuthMethodId.group(1)
+
+    if mfa_auth_method == "PhoneAppNotification":
+        return start_phone_app_mfa(session=session,
+                                   begin_auth_url=mfaStartMatch.group(1),
+                                   end_auth_url=mfaEndMatch.group(1),
+                                   process_auth_url=mfaProcessMatch.group(1),
+                                   flow_token=mfaFlowMatch.group(1),
+                                   ctx=mfaCtxMatch.group(1),
+                                   canary=canary)
+    elif mfa_auth_method in ["OneWaySMS", "PhoneAppOTP"]:
+        return start_token_mfa(session=session,
+                               mfa_auth_method=mfa_auth_method,
+                               begin_auth_url=mfaStartMatch.group(1),
+                               end_auth_url=mfaEndMatch.group(1),
+                               process_auth_url=mfaProcessMatch.group(1),
+                               flow_token=mfaFlowMatch.group(1),
+                               ctx=mfaCtxMatch.group(1),
+                               canary=canary)
+    else:
+        print("Unsupported MFA method: " + mfaAuthMethodId.group(1))
+        exit(1)
 
 
 def start_phone_app_mfa(session, begin_auth_url, end_auth_url, process_auth_url, flow_token, ctx, canary):
-  print("Waiting for MFA app ")
-  body = json.dumps({"AuthMethodId": "PhoneAppNotification", 
-                     "Method": "BeginAuth", 
-                     "ctx": ctx, 
-                     "flowToken": flow_token})
-  mfa_response = session.post(begin_auth_url, data=body, headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
+    print("Waiting for MFA app ")
+    body = json.dumps({"AuthMethodId": "PhoneAppNotification",
+                       "Method": "BeginAuth",
+                       "ctx": ctx,
+                       "flowToken": flow_token})
+    mfa_response = session.post(begin_auth_url, data=body,
+                                headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
 
-  #print(mfa_response.text)
-  auth_start = mfa_response.json()
-  
-  while True:
-    #print("sleeping")
-    time.sleep(5)
-    body = json.dumps({"AuthMethodId": "PhoneAppNotification", 
-                       "Method": "EndAuth", 
-                       "SessionId": auth_start["SessionId"], 
-                       "Ctx": auth_start["Ctx"], 
-                       "FlowToken": auth_start["FlowToken"]})
+    # print(mfa_response.text)
+    auth_start = mfa_response.json()
 
-    mfa_end_response = session.post(end_auth_url, data=body, headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
-    #print(mfa_end_response.text)
-    auth_end = mfa_end_response.json()
-    if auth_end["Result"] == "true":
-      return finish_mfa(session=session, process_auth_url=process_auth_url, request=auth_end["Ctx"], flow_token=auth_end["FlowToken"], canary=canary, mfa_auth_method="PhoneAppNotification")
-    elif auth_end["Retry"] == "false":
-      print("MFA Failed")
-      exit(1)
+    while True:
+        # print("sleeping")
+        time.sleep(5)
+        body = json.dumps({"AuthMethodId": "PhoneAppNotification",
+                           "Method": "EndAuth",
+                           "SessionId": auth_start["SessionId"],
+                           "Ctx": auth_start["Ctx"],
+                           "FlowToken": auth_start["FlowToken"]})
+
+        mfa_end_response = session.post(end_auth_url, data=body,
+                                        headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
+        # print(mfa_end_response.text)
+        auth_end = mfa_end_response.json()
+        if auth_end["Result"] == "true":
+            return finish_mfa(session=session, process_auth_url=process_auth_url, request=auth_end["Ctx"],
+                              flow_token=auth_end["FlowToken"], canary=canary, mfa_auth_method="PhoneAppNotification")
+        elif auth_end["Retry"] == "false":
+            print("MFA Failed")
+            exit(1)
+
 
 def start_token_mfa(session, mfa_auth_method, begin_auth_url, end_auth_url, process_auth_url, flow_token, ctx, canary):
-  #mfa_auth_method = "OneWaySMS"
+    # mfa_auth_method = "OneWaySMS"
 
-  body = json.dumps({"AuthMethodId": mfa_auth_method, "Method": "BeginAuth", "ctx": ctx, "flowToken": flow_token})
+    body = json.dumps({"AuthMethodId": mfa_auth_method, "Method": "BeginAuth", "ctx": ctx, "flowToken": flow_token})
 
-  mfa_response = session.post(begin_auth_url, data=body, headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
+    mfa_response = session.post(begin_auth_url, data=body,
+                                headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
 
-  #print(mfaresp.text)
-  auth_start = mfa_response.json()
-  #print(str(auth_start))  
-  if mfa_auth_method == "OneWaySMS":
-    print "SMS Token:",
-  else:
-    print "Token from App:",
+    # print(mfaresp.text)
+    auth_start = mfa_response.json()
+    # print(str(auth_start))
+    if mfa_auth_method == "OneWaySMS":
+        print "SMS Token:",
+    else:
+        print "Token from App:",
 
-  token = raw_input()
-  body = json.dumps({"AdditionalAuthData": token,
-                     "AuthMethodId": mfa_auth_method,
-                     "Method": "EndAuth",
-                     "SessionId": auth_start["SessionId"],
-                     "Ctx": auth_start["Ctx"],
-                     "FlowToken": auth_start["FlowToken"]})
+    token = raw_input()
+    body = json.dumps({"AdditionalAuthData": token,
+                       "AuthMethodId": mfa_auth_method,
+                       "Method": "EndAuth",
+                       "SessionId": auth_start["SessionId"],
+                       "Ctx": auth_start["Ctx"],
+                       "FlowToken": auth_start["FlowToken"]})
 
-  mfa_end_response = session.post(end_auth_url, data=body, headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
-  #print(mfaresp2.text)
-  auth_end = mfa_end_response.json()
-  if auth_end["Result"] == "true":
-    return finish_mfa(session=session, process_auth_url=process_auth_url, request=auth_end["Ctx"], flow_token=auth_end["FlowToken"], canary=canary, mfa_auth_method=mfa_auth_method)
-    #data = {"request": auth_end["Ctx"], "flowToken": auth_end["FlowToken"], "canary": payload["canary"], "mfaAuthMethod": mfaAuthMethodId.group(1), "rememberMFA": "false"}
-    #print("Posting to " + mfaProcessMatch.group(1) + "\n\n" + str(data))
-    #response = session.post(mfaProcessMatch.group(1), data=data)
-  else:
-    print("MFA Failed")
-    exit(1)
+    mfa_end_response = session.post(end_auth_url, data=body,
+                                    headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
+    # print(mfaresp2.text)
+    auth_end = mfa_end_response.json()
+    if auth_end["Result"] == "true":
+        return finish_mfa(session=session, process_auth_url=process_auth_url, request=auth_end["Ctx"],
+                          flow_token=auth_end["FlowToken"], canary=canary, mfa_auth_method=mfa_auth_method)
+        # data = {"request": auth_end["Ctx"], "flowToken": auth_end["FlowToken"], "canary": payload["canary"], "mfaAuthMethod": mfaAuthMethodId.group(1), "rememberMFA": "false"}
+        # print("Posting to " + mfaProcessMatch.group(1) + "\n\n" + str(data))
+        # response = session.post(mfaProcessMatch.group(1), data=data)
+    else:
+        print("MFA Failed")
+        exit(1)
+
 
 def finish_mfa(session, process_auth_url, request, flow_token, canary, mfa_auth_method):
-  print("MFA Success")
-  data = {"request": request, "flowToken": flow_token, "canary": canary, "mfaAuthMethod": mfa_auth_method, "rememberMFA": "false"}
+    print("MFA Success")
+    data = {"request": request, "flowToken": flow_token, "canary": canary, "mfaAuthMethod": mfa_auth_method,
+            "rememberMFA": "false"}
 
-  return session.post(process_auth_url, data=data) 
+    return session.post(process_auth_url, data=data)
 
-def extract_saml_assertion(saml_response):  
-  # Decode the response and extract the SAML assertion
-  #soup = BeautifulSoup(response.text.decode('utf8'))
-  saml_soup = BeautifulSoup(saml_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
-  assertion = ''
-  
-  # Look for the SAMLResponse attribute of the input tag (determined by
-  # analyzing the debug print lines above)
-  for inputtag in saml_soup.find_all('input'):
-    if(inputtag.get('name') == 'SAMLResponse'):
-      #print(inputtag.get('value'))
-      assertion = inputtag.get('value')
-  
-  # Better error handling is required for production use.
-  if (assertion == ''):
-    #TODO: Insert valid error checking/handling
-    print 'Response did not contain a valid SAML assertion'
-    sys.exit(0)
-  
-  return assertion
+
+def extract_saml_assertion(saml_response):
+    # Decode the response and extract the SAML assertion
+    # soup = BeautifulSoup(response.text.decode('utf8'))
+    saml_soup = BeautifulSoup(saml_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
+    assertion = ''
+
+    # Look for the SAMLResponse attribute of the input tag (determined by
+    # analyzing the debug print lines above)
+    for inputtag in saml_soup.find_all('input'):
+        if (inputtag.get('name') == 'SAMLResponse'):
+            # print(inputtag.get('value'))
+            assertion = inputtag.get('value')
+
+    # Better error handling is required for production use.
+    if (assertion == ''):
+        # TODO: Insert valid error checking/handling
+        print 'Response did not contain a valid SAML assertion'
+        sys.exit(0)
+
+    return assertion
+
 
 def get_roles_from_saml_assertion(saml_assertion):
-  # Parse the returned assertion and extract the authorized roles
-  awsroles = []
-  root = ET.fromstring(base64.b64decode(saml_assertion))
-  for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
-      if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
-          for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
-              awsroles.append(saml2attributevalue.text)
-  
-  # Note the format of the attribute value should be role_arn,principal_arn
-  # but lots of blogs list it as principal_arn,role_arn so let's reverse
-  # them if needed
-  for awsrole in awsroles:
-      chunks = awsrole.split(',')
-      if'saml-provider' in chunks[0]:
-          newawsrole = chunks[1] + ',' + chunks[0]
-          index = awsroles.index(awsrole)
-          awsroles.insert(index, newawsrole)
-          awsroles.remove(awsrole)
+    # Parse the returned assertion and extract the authorized roles
+    awsroles = []
+    root = ET.fromstring(base64.b64decode(saml_assertion))
+    for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
+        if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
+            for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
+                awsroles.append(saml2attributevalue.text)
 
-  return awsroles
+    # Note the format of the attribute value should be role_arn,principal_arn
+    # but lots of blogs list it as principal_arn,role_arn so let's reverse
+    # them if needed
+    for awsrole in awsroles:
+        chunks = awsrole.split(',')
+        if 'saml-provider' in chunks[0]:
+            newawsrole = chunks[1] + ',' + chunks[0]
+            index = awsroles.index(awsrole)
+            awsroles.insert(index, newawsrole)
+            awsroles.remove(awsrole)
+
+    return awsroles
+
 
 def assume_role_with_saml(role_arn, principal_arn, saml_assertion):
-  # Use the assertion to get an AWS STS token using Assume Role with SAML
-  client = boto3.client('sts')
-  token = client.assume_role_with_saml(RoleArn=role_arn,
-    PrincipalArn=principal_arn,
-    SAMLAssertion=saml_assertion)
-  
-  return token['Credentials']
-  
+    # Use the assertion to get an AWS STS token using Assume Role with SAML
+    client = boto3.client('sts')
+    token = client.assume_role_with_saml(RoleArn=role_arn,
+                                         PrincipalArn=principal_arn,
+                                         SAMLAssertion=saml_assertion)
+
+    return token['Credentials']
+
+
 if __name__ == "__main__":
     main()
