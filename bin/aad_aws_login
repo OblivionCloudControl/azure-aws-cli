@@ -12,6 +12,8 @@ import re
 import json
 import time
 import argparse
+from opvault.onepass import OnePass
+from opvault.designation_types import DesignationTypes
 from bs4 import BeautifulSoup
 from os.path import expanduser
 from urlparse import urlparse, urlunparse
@@ -25,22 +27,54 @@ logging.basicConfig(level=logging.CRITICAL)
 logger = logging.getLogger('saml-form-auth')
 
 
+def opvault_get_credentials(op_path, op_title):
+    vault = OnePass(op_path)
+
+    vault.unlock(master_password=getpass.getpass(prompt='OPVault master password:'))
+    vault.load_items()
+
+    overview, details = vault.get_item(op_title)
+
+    for field in details['fields']:
+        if 'designation' in field and field['designation'] == DesignationTypes.USERNAME:
+            op_username = field['value']
+        elif 'designation' in field and field['designation'] == DesignationTypes.PASSWORD:
+            op_password = field['value']
+
+    return op_username, op_password
+
+
 def main():
     parser = argparse.ArgumentParser(description='Get temporary AWS access credentials using O365 SAML Login')
-    parser.add_argument('username', type=str,
-                        help='the o365 username')
     parser.add_argument('saml_app_id', type=str,
                         help='the o365 SAML app id')
     parser.add_argument('--profile-name', dest='profile_name',
                         help='the name of AWS profile to save the data in (default username)')
+    parser.add_argument('--username', type=str,
+                        help='the o365 username')
+    parser.add_argument('--opvault-path', dest='opvault_path',
+                        help='(optional) path to opvault store when password should be retrieved from opvault store')
+    parser.add_argument('--opvault-title', dest='opvault_title',
+                        help='(optional) title of opvault item')
 
     args = parser.parse_args()
 
-    if args.username is not None:
-        username = args.username
+    if args.opvault_path:
+        # Use opvault store as database backend
+        if not args.opvault_title:
+            print('--opvault-title is required')
+            parser.print_usage()
+            sys.exit(1)
+
+        username, password = opvault_get_credentials(op_path=args.opvault_path, op_title=args.opvault_title)
     else:
-        print "Username:",
-        username = raw_input()
+        # Use username parameter/rawinput and getpass for password
+        if args.username is not None:
+            username = args.username
+        else:
+            print 'Username:',
+            username = raw_input()
+        password = getpass.getpass(prompt='Password: ')
 
     saml_app_id = args.saml_app_id
 
@@ -48,8 +82,6 @@ def main():
         profile_name = args.profile_name
     else:
         profile_name = username
-
-    password = getpass.getpass()
 
     # Initiate session handler
     session = requests.Session()
