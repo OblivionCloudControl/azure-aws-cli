@@ -5,14 +5,18 @@
 * Boto3
 
 ## Getting credentials
-* Run `aad_aws_login [email address] [AAD App Id]`
+### For getpass input
+* Run `aad_aws_login [AAD App Id] --username [email address]`
+### For 1Password OPVault input
+* Run `aad_aws_login [AAD App ID] --opvault-path "[path to 1Password.opvault]" --opvault-title "[title of 1Password item]"`
+### Profile
 * This will store the AWS credentials in your AWS credentials file under the profile [email address]
 
 You can specify the name of the iam-profile with `--profile-name [name]`.
 
 The AAD App id can be found by using the last part of the single sign-on url you can find on the application dashboard.
 
-You might want to use an alias to have the login simplified like `aws_login='aad_aws_login foo@bar.com 1234567890abcdef --profile-name foo-bar'`.
+You might want to use an alias to have the login simplified like `aws_login='aad_aws_login 1234567890abcdef --username foo@bar.com --profile-name foo-bar'`.
 
 ## MFA
 This tool is compatible if MFA is enabled for the account. The types of MFA that are support by this tool:
