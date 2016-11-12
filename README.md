@@ -7,8 +7,10 @@
 ## Getting credentials
 ### For getpass input
 * Run `aad_aws_login [AAD App Id] --username [email address]`
+
 ### For 1Password OPVault input
 * Run `aad_aws_login [AAD App ID] --opvault-path "[path to 1Password.opvault]" --opvault-title "[title of 1Password item]"`
+
 ### Profile
 * This will store the AWS credentials in your AWS credentials file under the profile [email address]
 
