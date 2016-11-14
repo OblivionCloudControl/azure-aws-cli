@@ -12,7 +12,7 @@
 * Run `aad_aws_login [AAD App ID] --opvault-path "[path to 1Password.opvault]" --opvault-title "[title of 1Password item]"`
 
 ### Profile
-* This will store the AWS credentials in your AWS credentials file under the profile [email address]
+* This will store the AWS credentials in your AWS credentials file under the profile `[email address]`
 
 You can specify the name of the iam-profile with `--profile-name [name]`.
 
@@ -24,7 +24,7 @@ You might want to use an alias to have the login simplified like `aws_login='aad
 Instead of running this tool on your local installation, you can also use a Docker container: `docker run steynovich/azure-aws-cli:latest`
 
 ## Profile
-Add the following to your .bashrc or .zshrc to simplify logging in to AWS
+Add the following to your `.bashrc` or `.zshrc` to simplify logging in to AWS
 ```bash
 OPVAULT="[path to 1Password.opvault]"
 AAD_APP_ID=[AAD App ID]
