@@ -31,7 +31,7 @@ def opvault_get_credentials(op_path, op_title):
     vault = OnePass(op_path)
 
     vault.unlock(master_password=getpass.getpass(prompt='OPVault master password:'))
-    vault.load_items()
+    vault.load_items(exclude_trashed=True)
 
     overview, details = vault.get_item(op_title)
 
