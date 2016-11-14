@@ -29,7 +29,7 @@ Add the following to your `.bashrc` or `.zshrc` to simplify logging in to AWS
 OPVAULT="[path to 1Password.opvault]"
 AAD_APP_ID=[AAD App ID]
 OPVAULT_TITLE="[title of 1Password item]"
-alias awslogin='docker run -v $HOME/.aws/:/root/.aws/ -v $OPVAULT:/data:ro -ti --rm oblcc/azure-aws-cli:latest $AAD_APP_ID --opvault-path /data --opvault-title $OPVAULT_TITLE'
+alias awslogin='docker run -v "${HOME}/.aws/":/root/.aws/ -v "${OPVAULT}":/data:ro -ti --rm oblcc/azure-aws-cli:latest ${AAD_APP_ID} --opvault-path /data --opvault-title "${OPVAULT_TITLE}"'
 ```
 And then simply run `awslogin`
 
@@ -41,3 +41,12 @@ This tool is compatible if MFA is enabled for the account. The types of MFA that
 
 ## Installation
 `pip install -e git+https://github.com/OblivionCloudControl/azure-aws-cli.git\#egg=aad-aws-login`
+
+
+## Troubleshooting
+
+### Location of OPVault store
+You can find the path of your OPVault store using `find ~ -type d -name '*.opvault' -print`
+
+### 1Password for Teams
+This only works for OPVault stores on local filesystems. 1Password for Teams is currently not supported.
