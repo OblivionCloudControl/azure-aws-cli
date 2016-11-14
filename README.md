@@ -21,7 +21,7 @@ The AAD App id can be found by using the last part of the single sign-on url you
 You might want to use an alias to have the login simplified like `aws_login='aad_aws_login 1234567890abcdef --username foo@bar.com --profile-name foo-bar'`.
 
 ## Docker
-Instead of running this tool on your local installation, you can also use a Docker container: `docker run steynovich/azure-aws-cli:latest`
+Instead of running this tool on your local installation, you can also use a Docker container: `docker run oblcc/azure-aws-cli:latest`
 
 ## Profile
 Add the following to your `.bashrc` or `.zshrc` to simplify logging in to AWS
@@ -29,7 +29,7 @@ Add the following to your `.bashrc` or `.zshrc` to simplify logging in to AWS
 OPVAULT="[path to 1Password.opvault]"
 AAD_APP_ID=[AAD App ID]
 OPVAULT_TITLE="[title of 1Password item]"
-alias awslogin='docker run -v $HOME/.aws/:/root/.aws/ -v $OPVAULT:/data:ro -ti --rm steynovich/azure-aws-cli:latest $AAD_APP_ID --opvault-path /data --opvault-title $OPVAULT_TITLE'
+alias awslogin='docker run -v $HOME/.aws/:/root/.aws/ -v $OPVAULT:/data:ro -ti --rm oblcc/azure-aws-cli:latest $AAD_APP_ID --opvault-path /data --opvault-title $OPVAULT_TITLE'
 ```
 And then simply run `awslogin`
 
