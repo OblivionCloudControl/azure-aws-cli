@@ -235,8 +235,13 @@ def o365_login(session, saml_app_id, username, password):
 
     redir_soup = BeautifulSoup(redir_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
     redir_match = re.match(r".*?window\.location\s*=\s*\'([^']+)\'", str(redir_soup), re.M | re.S)
-    redir_url = redir_match.group(1)
-    saml_response = session.get(redir_url)
+    try:
+        redir_url = redir_match.group(1)
+        saml_response = session.get(redir_url)
+    except Exception as e:
+        print "Login error - wrong password or password expired? (%s)" % e
+        sys.exit(1)
+
     return saml_response
 
 
