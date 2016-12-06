@@ -235,6 +235,10 @@ def o365_login(session, saml_app_id, username, password):
 
     redir_soup = BeautifulSoup(redir_response.text.encode('utf-8').decode('ascii', 'ignore'), "html.parser")
     redir_match = re.match(r".*?window\.location\s*=\s*\'([^']+)\'", str(redir_soup), re.M | re.S)
+
+    if not redir_match:
+        raise Exception('Login failed (invalid password or application ID)')
+
     redir_url = redir_match.group(1)
     saml_response = session.get(redir_url)
     return saml_response
