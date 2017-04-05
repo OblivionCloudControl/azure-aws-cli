@@ -137,7 +137,7 @@ def main():
 
 def save_aws_credentials(profile_name, access_key_id, secret_access_key, session_token):
     # Write the AWS STS token into the AWS credential file
-    home = expanduser("~")
+    home = expanduser('~')
     filename = home + '/.aws/credentials'
 
     # Read in the existing config file
