@@ -2,6 +2,7 @@
 
 import sys
 import os
+import stat
 import boto3
 import requests
 import getpass
@@ -21,6 +22,9 @@ from urlparse import urlparse, urlunparse
 
 ##########################################################################
 # Variables
+
+CREDFILE_FLAGS = os.O_WRONLY | os.O_CREAT
+CREDFILE_MODE = stat.S_IRUSR | stat.S_IWUSR
 
 # Uncomment to enable low level debugging
 # logging.basicConfig(level=logging.DEBUG)
@@ -159,9 +163,9 @@ def save_aws_credentials(profile_name, access_key_id, secret_access_key, session
     config.set(profile_name, 'aws_security_token', session_token)
 
     # Write the updated config file
-    with open(filename, os.O_WRONLY | os.O_CREAT, 0o600) as configfile:
+    with os.fdopen(os.open(filename, CREDFILE_FLAGS, CREDFILE_MODE), 'w') as configfile:
         config.write(configfile)
-
+        os.chmod(filename, CREDFILE_MODE)
 
 def idp_entry_url(saml_app_id):
     return 'https://myapps.microsoft.com/signin/AWS/' + saml_app_id
