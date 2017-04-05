@@ -158,7 +158,7 @@ def save_aws_credentials(profile_name, access_key_id, secret_access_key, session
     config.set(profile_name, 'aws_security_token', session_token)
 
     # Write the updated config file
-    with open(filename, 'w+') as configfile:
+    with open(filename, os.O_WRONLY | os.O_CREAT, 0o600) as configfile:
         config.write(configfile)
 
 
