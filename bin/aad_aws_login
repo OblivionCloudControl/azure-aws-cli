@@ -345,7 +345,7 @@ def start_token_mfa(session, mfa_auth_method, begin_auth_url, end_auth_url, proc
     # print(mfaresp2.text)
     auth_end = mfa_end_response.json()
     
-    if auth_end["Result"] in ("true", "True", True):
+    if auth_end["Success"] in ("true", "True", True):
         return finish_mfa(session=session, process_auth_url=process_auth_url, request=auth_end["Ctx"],
                           flow_token=auth_end["FlowToken"], canary=canary, mfa_auth_method=mfa_auth_method)
         # data = {"request": auth_end["Ctx"], "flowToken": auth_end["FlowToken"], "canary": payload["canary"], "mfaAuthMethod": mfaAuthMethodId.group(1), "rememberMFA": "false"}
