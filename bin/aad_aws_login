@@ -308,10 +308,10 @@ def start_phone_app_mfa(session, begin_auth_url, end_auth_url, process_auth_url,
                                         headers={u"Accept": u"application/json", u"Content-Type": u"application/json"})
         # print(mfa_end_response.text)
         auth_end = mfa_end_response.json()
-        if auth_end["Result"] in ("true", "True", True):
+        if auth_end["Success"] in ("true", "True", True):
             return finish_mfa(session=session, process_auth_url=process_auth_url, request=auth_end["Ctx"],
                               flow_token=auth_end["FlowToken"], canary=canary, mfa_auth_method="PhoneAppNotification")
-        elif auth_end["Retry"] == "false":
+        elif auth_end["Success"] == "false":
             print("MFA Failed")
             exit(1)
 
